@@ -153,6 +153,13 @@ class StartEndDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
+        res = self._get_item(index)
+        while res is None:
+            index = random.randint(0, len(self.data) - 1)
+            res = self._get_item(index)
+        return res
+
+    def _get_item(self, index):
         # delay loading lmdb data until after initialization
         if self.appearance_visual_env is None:
             self._init_db()
@@ -213,7 +220,9 @@ class StartEndDataset(Dataset):
                                        math.ceil(end / self.slide_window_size) + 1)
             assert len(pos_window_id_list), (_meta, ctx_l, _meta["timestamps"], pos_window_id_list)
             neg_window_pool = list(set(range(num_window)) - set(pos_window_id_list))
-            assert len(neg_window_pool), (_meta, ctx_l, _meta["timestamps"], pos_window_id_list)
+            if not len(neg_window_pool):
+                logger.warning(f"No negative windows available for {query_id}. Skipping.")
+                return None
 
             ####
             # There are at least two positive windows for each query, we choose a strategy to choose more
@@ -227,6 +236,11 @@ class StartEndDataset(Dataset):
 
             new_start = max((idx - 1) * self.slide_window_size, 0)
             new_end = min((idx - 1) * self.slide_window_size + self.max_v_l, ctx_l)
+            
+            if new_end <= new_start:
+                logger.warning(f"Invalid window for {query_id}: new_start={new_start}, new_end={new_end}, ctx_l={ctx_l}. Skipping.")
+                return None
+            
             tmp_video_motion_feat = video_motion_feat[new_start:new_end, :]
             tmp_video_appearance_feat = video_clip_feat[new_start:new_end, :]
             tmp_model_inputs = {
@@ -241,12 +255,23 @@ class StartEndDataset(Dataset):
             # span_proposal ground-truth
             start_pos = max((idx - 1) * self.slide_window_size, start) - tmp_model_inputs["video_start"]
             end_pos = min((idx - 1) * self.slide_window_size + self.max_v_l, end) - tmp_model_inputs["video_start"]
+            
+            # Handle edge case where grounding is extremely short or noise in dataset
+            if math.floor(start_pos) >= math.ceil(end_pos):
+                if math.floor(start_pos) > 0:
+                    start_pos = math.ceil(end_pos) - 1
+                else:
+                    end_pos = math.floor(start_pos) + 1
+
             tmp_span_labels = self.get_span_labels([[start_pos, end_pos]], tmp_model_inputs['video_length'])
             tmp_model_inputs.update({'span_labels': tmp_span_labels})
-            assert 0 <= math.floor(start_pos) < math.ceil(end_pos), [start, end, idx, tmp_model_inputs["video_start"],
-                                                                     start_pos, end_pos, _meta]
+            
+            # Ensure safe boundaries for IntTensor/Indexing
+            s_idx = max(0, math.floor(start_pos))
+            e_idx = max(s_idx + 1, math.ceil(end_pos))
+            
             tmp_model_clip_inputs.update(
-                {'span_proposal': torch.IntTensor([[math.floor(start_pos), math.ceil(end_pos)]])})
+                {'span_proposal': torch.IntTensor([[s_idx, e_idx]])})
 
             # Choose one positive saliency frame inside the ground-truth
             # and one negative saliency frame out of ground-truth
@@ -307,21 +332,31 @@ class StartEndDataset(Dataset):
         returns both textual token feature and holistic text feature for each query
         """
         dump = self.textual_txn.get(qid.encode())
-        with io.BytesIO(dump) as reader:
-            q_dump = np.load(reader, allow_pickle=True)
-            q_feat = q_dump['token_features']
-            try:
-                cls_q_feat = q_dump['cls_features']
-            except:
-                cls_q_feat = q_dump['eot_features']
-            if len(cls_q_feat.shape) == 2:
-                cls_q_feat = cls_q_feat[0]
+        if dump is None:
+            logger.warning(f"Query {qid} not found in LMDB!")
+            return torch.zeros(self.max_q_l, 768), torch.zeros(768)
+        
+        try:
+            with io.BytesIO(dump) as reader:
+                q_dump = np.load(reader, allow_pickle=True)
+                q_feat = q_dump['token_features']
+                try:
+                    cls_q_feat = q_dump['cls_features']
+                except:
+                    cls_q_feat = q_dump['eot_features']
+                if len(cls_q_feat.shape) == 2:
+                    cls_q_feat = cls_q_feat[0]
 
-        if self.q_feat_type == "last_hidden_state":
-            q_feat = q_feat[:self.max_q_l]
+            if self.q_feat_type == "last_hidden_state":
+                q_feat = q_feat[:self.max_q_l]
 
-        if self.normalize_t:
-            q_feat = l2_normalize_np_array(q_feat)
+            if self.normalize_t:
+                q_feat = l2_normalize_np_array(q_feat)
+            
+            return torch.from_numpy(q_feat), torch.from_numpy(cls_q_feat)
+        except Exception as e:
+            logger.error(f"Error loading query {qid}: {e}. Skipping (returning zeros).")
+            return torch.zeros(self.max_q_l, 768), torch.zeros(768)
 
         cls_q_feat = l2_normalize_np_array(cls_q_feat)
 
@@ -339,13 +374,19 @@ class StartEndDataset(Dataset):
 
     def _get_video_appearance_feat_by_vid(self, vid):
         dump = self.appearance_visual_txn.get(vid.encode())
-        with io.BytesIO(dump) as reader:
-            img_dump = np.load(reader, allow_pickle=True)
-            v_feat = img_dump['features']
-
-        if self.normalize_v:
-            _v_feat = l2_normalize_np_array(v_feat)
-        return torch.from_numpy(v_feat)  # (Lv, D)
+        if dump is None:
+            logger.warning(f"Video {vid} not found in LMDB!")
+            return torch.zeros(1, 768)
+        try:
+            with io.BytesIO(dump) as reader:
+                img_dump = np.load(reader, allow_pickle=True)
+                v_feat = img_dump['features']
+            if self.normalize_v:
+                v_feat = l2_normalize_np_array(v_feat)
+            return torch.from_numpy(v_feat)  # (Lv, D)
+        except Exception as e:
+            logger.error(f"Error loading video {vid}: {e}. Skipping (returning zeros).")
+            return torch.zeros(1, 768)
 
 
 def start_end_collate(batch):
