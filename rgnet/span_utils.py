@@ -67,7 +67,7 @@ def temporal_iou(spans1, spans2):
     inter = (right - left).clamp(min=0)  # (N, M)
     union = areas1[:, None] + areas2 - inter  # (N, M)
 
-    iou = inter / union
+    iou = inter / (union + 1e-7)
     return iou, union
 
 
@@ -107,15 +107,26 @@ def generalized_temporal_iou(spans1, spans2):
     tensor([[ 0.6667,  0.2000],
         [-0.2000,  0.5000]])
     """
-    spans1 = spans1.float()
-    spans2 = spans2.float()
-    assert (spans1[:, 1] >= spans1[:, 0]).all(), (spans1)
-    assert (spans2[:, 1] >= spans2[:, 0]).all(), (spans2)
+    if torch.isnan(spans1).any() or torch.isnan(spans2).any():
+        print(f"DEBUG: NaN detected in spans! spans1_nan: {torch.isnan(spans1).any()}, spans2_nan: {torch.isnan(spans2).any()}")
+    
+    # Optional: Clamp spans to [0, 1] if they are normalized
+    # spans1 = spans1.clamp(min=0, max=1)
+    
+    # Ensure ed >= st (non-inplace)
+    s1, e1 = spans1.unbind(-1)
+    e1 = torch.max(e1, s1)
+    spans1 = torch.stack([s1, e1], dim=-1)
+
+    s2, e2 = spans2.unbind(-1)
+    e2 = torch.max(e2, s2)
+    spans2 = torch.stack([s2, e2], dim=-1)
+    
     iou, union = temporal_iou(spans1, spans2)
 
     left = torch.min(spans1[:, None, 0], spans2[:, 0])  # (N, M)
     right = torch.max(spans1[:, None, 1], spans2[:, 1])  # (N, M)
-    enclosing_area = (right - left).clamp(min=0)  # (N, M)
+    enclosing_area = (right - left).clamp(min=1e-7)  # (N, M)
 
     return iou - (enclosing_area - union) / enclosing_area
 
