@@ -66,7 +66,7 @@ def read_lines(filepath):
 
 def mkdirp(p):
     if not os.path.exists(p):
-        os.makedirs(p)
+        os.makedirs(p, exist_ok=True)
 
 
 def flat_list_of_lists(l):

@@ -101,10 +101,11 @@ class StartEndDataset(Dataset):
             v2q_dict = {}
             self.q2q_list = []
             for i, d in enumerate(self.data):
-                if d['video_id'] in v2q_dict:
-                    v2q_dict[d['video_id']].add(i)
+                vid_key = d.get('video_id', d.get('clip_id'))
+                if vid_key in v2q_dict:
+                    v2q_dict[vid_key].add(i)
                 else:
-                    v2q_dict[d['video_id']] = {i}
+                    v2q_dict[vid_key] = {i}
             self.movies = [list(a) for a in list(v2q_dict.values())]
         # the window rank-list computed by the contrastive pre-trained model
         self.query_id2windowidx = query_id2windowidx
@@ -164,6 +165,8 @@ class StartEndDataset(Dataset):
         if self.appearance_visual_env is None:
             self._init_db()
         _meta = self.data[index]
+        if "video_id" not in _meta and "clip_id" in _meta:
+            _meta["video_id"] = _meta["clip_id"]
         query_id = _meta["query_id"]
         model_inputs = []
         model_clip_inputs = []

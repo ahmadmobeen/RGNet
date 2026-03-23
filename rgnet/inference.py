@@ -316,8 +316,8 @@ def eval_epoch(model, eval_inter_window_dataset, eval_intra_window_dataset, opt,
         print("total model running time: ", time.time() - start_time)
 
     latest_file_paths = []
-    if opt.dset_name == "mad":
-        # Post-processing for MAD dataset
+    if opt.dset_name in ["mad", "needlescan", "unified"]:
+        # Post-processing for MAD/Unified dataset
         submission, submission_proposal, submission_matching = postprocessing_format_mad(submission, opt)
         submission_path = os.path.join(opt.results_dir, save_submission_filename)
         if util.is_main_process():
@@ -503,7 +503,7 @@ def eval_epoch(model, eval_inter_window_dataset, eval_intra_window_dataset, opt,
             output_mIoU = mIoU_matching
         latest_file_paths.append(submission_matching_path)
 
-    if opt.dset_name == "mad":
+    if opt.dset_name in ["mad", "needlescan", "unified"]:
         output_mIoU = None
 
 
@@ -632,7 +632,7 @@ def setup_model(opt):
 
     if opt.resume is not None:
         logger.info(f"Load checkpoint from {opt.resume}")
-        checkpoint = torch.load(opt.resume, map_location="cpu")
+        checkpoint = torch.load(opt.resume, map_location="cpu", weights_only=False)
         if 'module' in list(checkpoint["model"].keys())[0]:
             checkpoint["model"] = OrderedDict((k.replace("module.",""), v) for k, v in checkpoint["model"].items())
 
