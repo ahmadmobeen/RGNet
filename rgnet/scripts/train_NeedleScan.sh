@@ -1,15 +1,15 @@
 #!/bin/bash
 source /home/mobeen/codes/NeedleScan/.venv/bin/activate
 ######## Data paths, representing the federated NeedleScan datasets
-train_path=data/unified/train.jsonl
-eval_path=data/unified/val.jsonl
+train_path=/gpfs/public/datasets/vmr/rgnet/unified/train.jsonl
+eval_path=/gpfs/public/datasets/vmr/rgnet/unified/val.jsonl
 eval_split_name=val
-results_root=results_needlescan
+results_root=/gpfs/public/artifacts/vmr/rgnet
 
 ######## Setup video/textual feature path
-motion_feat_dir=data/unified/features/video_features_768.lmdb
-appearance_feat_dir=data/unified/features/video_features_768.lmdb
-text_feat_dir=data/unified/features/text_features_768.lmdb
+motion_feat_dir=/gpfs/public/datasets/vmr/rgnet/unified/features/video_features_768.lmdb
+appearance_feat_dir=/gpfs/public/datasets/vmr/rgnet/unified/features/video_features_768.lmdb
+text_feat_dir=/gpfs/public/datasets/vmr/rgnet/unified/features/text_features_768.lmdb
 
 # Feature dimension (SigLIP base=768, CLIP ViT-B/32 text=512)
 v_motion_feat_dim=768

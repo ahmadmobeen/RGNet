@@ -4,10 +4,10 @@ cd /home/mobeen/codes/NeedleScan/research/RGNet
 
 echo "Running RGNet Evaluation on Unified Validation Set..."
 CUDA_VISIBLE_DEVICES=0,1 PYTHONPATH=$PYTHONPATH:. python rgnet/inference.py \
---resume /gpfs/public/artifacts/vmr/rgnet/unified-short_test_needlescan/model_e0000.ckpt \
+--resume /gpfs/public/artifacts/vmr/rgnet/unified-train_needlescan/model_e0032.ckpt \
 --eval_split_name val \
---eval_path /gpfs/public/datasets/vmr/rgnet/unified/val_short.jsonl \
---eval_id short_test_eval \
+--eval_path /gpfs/public/datasets/vmr/rgnet/unified/val.jsonl \
+--eval_id unified_eval_final \
 --num_workers 8 \
 --bsz 32 \
 --ret_eval \
