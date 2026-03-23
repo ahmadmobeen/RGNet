@@ -20,7 +20,7 @@ class BaseOptions(object):
     def initialize(self):
         self.initialized = True
         parser = argparse.ArgumentParser()
-        parser.add_argument("--dset_name", type=str, choices=["ego4d", 'mad'])
+        parser.add_argument("--dset_name", type=str)
         parser.add_argument("--eval_split_name", type=str, default="val",
                             help="should match keys in video_duration_idx_path, must set for VCMR")
         parser.add_argument("--debug", action="store_true",

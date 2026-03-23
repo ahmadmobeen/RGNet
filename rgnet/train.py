@@ -225,7 +225,7 @@ def train(model, model_without_ddp, criterion, optimizer, lr_scheduler, train_da
         start_epoch = opt.start_epoch
     if opt.debug:
         start_epoch = 0
-    if opt.dset_name == "mad":
+    if opt.dset_name in ["mad", "unified"]:
         save_submission_filename = "latest_{}_{}_preds.jsonl".format(opt.dset_name, opt.eval_split_name)
     else:
         save_submission_filename = "latest_{}_{}_preds.json".format(opt.dset_name, opt.eval_split_name)
@@ -256,7 +256,7 @@ def train(model, model_without_ddp, criterion, optimizer, lr_scheduler, train_da
                         key = k.replace('\n','')
                         tb_writer.add_scalar(f"val/{id_dict[id]}/{key}", float(v), epoch_i + 1)
 
-            if opt.dset_name == "mad":
+            if opt.dset_name in ["mad", "unified"]:
                 stop_score = torch.mean(results[0])
                 print("stop_score ", stop_score)
             else:

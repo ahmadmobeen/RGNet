@@ -1,5 +1,6 @@
 #!/bin/bash
 source /home/mobeen/codes/NeedleScan/.venv/bin/activate
+cd $(dirname $0)/../..
 ######## Data paths, representing the federated NeedleScan datasets
 train_path=/gpfs/public/datasets/vmr/rgnet/unified/train.jsonl
 eval_path=/gpfs/public/datasets/vmr/rgnet/unified/val.jsonl

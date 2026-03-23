@@ -269,6 +269,7 @@ class RGNet(nn.Module):
         num_texts, embed_dim = text_embeds.shape
 
         # num_vids x num_frames x num_texts
+        video_embeds = video_embeds.to(text_embeds.dtype)
         sims = video_embeds @ text_embeds.t()
         sims_topk = torch.topk(sims, k, dim=1)[1]
 
