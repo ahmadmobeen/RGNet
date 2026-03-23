@@ -19,19 +19,22 @@ t_feat_dim=768
 
 #### training
 n_epoch=35
-lr=1e-4
+lr=8e-4
 lr_drop=25
 device_id=0
 num_queries=5
 max_v_l=90  # 90 segments * 2.0s = 180s context window
-bsz=8
-eval_bsz=8
+bsz=96
+eval_bsz=96
 clip_length=2.0  ##  video features extracted every 2.0 seconds via VideoEncoder
 max_q_l=25
-num_workers=4
+num_workers=16
 
 ######## Hyper-parameter
 dset_name=unified
+#### W&B Configuration
+export WANDB_BASE_URL="https://pyler.wandb.io"
+
 seed=2020
 adapter_module=none
 max_es_cnt=-1
@@ -44,7 +47,7 @@ pos_temperature=100
 exp_id=train_needlescan
 
 # Using standard torchrun instead of srun wrapper
-NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 PYTHONPATH=$PYTHONPATH:. torchrun --nproc_per_node=2 --master_port $RANDOM rgnet/train.py \
+NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 PYTHONPATH=$PYTHONPATH:. torchrun --nproc_per_node=2 --master_port 29505 rgnet/train.py \
 --gumbel_eps 0.3 \
 --gumbel_single_proj \
 --nms_thd 0.5 \

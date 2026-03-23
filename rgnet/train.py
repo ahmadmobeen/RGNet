@@ -19,6 +19,7 @@ from torch.utils.data.distributed import DistributedSampler
 import utils.misc as util
 
 import logging
+import wandb
 
 import torch.multiprocessing
 
@@ -159,8 +160,10 @@ def train_epoch(model, criterion, train_loader, optimizer, opt, epoch_i, tb_writ
     if util.is_main_process():
         # print/add logs
         tb_writer.add_scalar("Train/lr", float(optimizer.param_groups[0]["lr"]), epoch_i + 1)
+        wandb.log({"Train/lr": float(optimizer.param_groups[0]["lr"])}, step=epoch_i + 1)
         for k, v in loss_meters.items():
             tb_writer.add_scalar("Train/{}".format(k), v.avg, epoch_i + 1)
+            wandb.log({"Train/{}".format(k): v.avg}, step=epoch_i + 1)
 
         to_write = opt.train_log_txt_formatter.format(
             time_str=time.strftime("%Y_%m_%d_%H_%M_%S"),
@@ -184,6 +187,12 @@ def train(model, model_without_ddp, criterion, optimizer, lr_scheduler, train_da
     if util.is_main_process():
         tb_writer = SummaryWriter(opt.tensorboard_log_dir)
         tb_writer.add_text("hyperparameters", dict_to_markdown(vars(opt), max_str_len=None))
+        wandb.init(
+            project="Video Moment Retrieval",
+            name=opt.exp_id,
+            config=vars(opt),
+            dir=opt.results_dir
+        )
     opt.train_log_txt_formatter = "{time_str} [Epoch] {epoch:03d} [Loss] {loss_str}\n"
     opt.eval_log_txt_formatter = "{time_str} [Epoch] {epoch:03d} [Loss] {loss_str} [Metrics] {eval_metrics_str}\n"
 
@@ -208,6 +217,8 @@ def train(model, model_without_ddp, criterion, optimizer, lr_scheduler, train_da
         shuffle= False,
         pin_memory=opt.pin_memory,
         sampler=train_sampler,
+        persistent_workers=True if opt.num_workers > 0 else False,
+        prefetch_factor=4 if opt.num_workers > 0 else None,
     )
 
     prev_best_score = 0.
@@ -255,6 +266,7 @@ def train(model, model_without_ddp, criterion, optimizer, lr_scheduler, train_da
                     for k, v in zip(d[0], d[1]):
                         key = k.replace('\n','')
                         tb_writer.add_scalar(f"val/{id_dict[id]}/{key}", float(v), epoch_i + 1)
+                        wandb.log({f"val/{id_dict[id]}/{key}": float(v)}, step=epoch_i + 1)
 
             if opt.dset_name in ["mad", "unified"]:
                 stop_score = torch.mean(results[0])
