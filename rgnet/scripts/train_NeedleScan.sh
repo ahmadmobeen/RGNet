@@ -64,6 +64,7 @@ NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 PYTHONPATH=$PYTHONPATH:. torchrun --nproc_p
 --max_q_l ${max_q_l} \
 --dset_name ${dset_name} \
 --train_path ${train_path} \
+--eval_path ${eval_path} \
 --eval_split_name ${eval_split_name} \
 --motion_feat_dir ${motion_feat_dir} \
 --appearance_feat_dir ${appearance_feat_dir} \
