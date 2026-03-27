@@ -376,7 +376,7 @@ def eval_epoch(model, eval_inter_window_dataset, eval_intra_window_dataset, opt,
             score_str_matching, matching_data = mad_eval.display_results(
                 results_matching, thresholds, topK, title=title
             )
-            save_metrics_path = submission_path.replace(".jsonl", ".txt")
+            save_metrics_path = submission_path.replace(".jsonl", ".txt").replace(".json", ".txt")
             if util.is_main_process():
                 print(score_str_matching, flush=True)
                 with open(save_metrics_path, mode="w", encoding="utf-8") as score_writer:
