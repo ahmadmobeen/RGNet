@@ -107,7 +107,7 @@ class Transformer(nn.Module):
         pos_embed = pos_embed.permute(1, 0, 2)   # (L, batch_size, d)
         if self.dabdetr:
             refpoint_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)  # (#queries, batch_size, d)
-            tgt = torch.zeros(refpoint_embed.shape[0], bs, d).cuda()
+            tgt = torch.zeros(refpoint_embed.shape[0], bs, d).to(refpoint_embed.device)
         else:
             query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)  # (#queries, batch_size, d)
             tgt = torch.zeros_like(query_embed)
